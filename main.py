@@ -1,7 +1,7 @@
 """Application entry point.
 
 Creates the FastAPI app, registers middleware, mounts routers,
-and initialises the database on startup via the lifespan handler.
+and initialises the .
 """
 import logging
 from contextlib import asynccontextmanager
