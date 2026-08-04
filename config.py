@@ -108,6 +108,4 @@ class Settings(BaseSettings):
     ollama_model: str = "ollama/llama3"
     ollama_enabled: bool = False
 
-
 settings = Settings()
-

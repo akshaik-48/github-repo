@@ -6,12 +6,10 @@ and initialises the database on startup via the lifespan handler.
 import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from sqlalchemy.engine.url import make_url
-
 from app.config import settings
 from app.database import init_db
 from app.routers.analysis import router as analysis_router
