@@ -1,5 +1,4 @@
 """PR checks node.
-
 Validates PR/MR hygiene before merge:
 
 1. **Title check** -- the PR/MR title must match the configured rule.
@@ -20,7 +19,6 @@ from app.github_client import GitHubClient
 from app.gitlab_client import GitLabClient
 from app.pr_pipeline.state import PRAgentState, RuleFinding
 from app.rules_loader import load_rules
-
 
 class PRChecksNode:
     """Runs configurable title and commit-message validation checks."""

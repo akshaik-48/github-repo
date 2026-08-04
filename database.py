@@ -14,21 +14,17 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
-
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
-
 from app.config import settings
 
 _ENGINE: Engine | None = None
-
 
 def _get_engine() -> Engine:
     global _ENGINE
     if _ENGINE is None:
         _ENGINE = create_engine(settings.database_url, future=True, pool_pre_ping=True)
     return _ENGINE
-
 
 def _run_script(engine: Engine, script_text: str) -> None:
     statements = [chunk.strip() for chunk in script_text.split(";") if chunk.strip()]
@@ -37,7 +33,6 @@ def _run_script(engine: Engine, script_text: str) -> None:
     with engine.begin() as conn:
         for statement in statements:
             conn.exec_driver_sql(statement)
-
 
 def _apply_migrations() -> None:
     migrations_path = Path(__file__).resolve().parent / "migrations"
