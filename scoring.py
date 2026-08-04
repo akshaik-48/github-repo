@@ -1,5 +1,4 @@
 """PR risk scoring engine.
-
 Computes a numeric risk score (0–100) and a severity level for a pull request
 based on configurable rules (file count, churn, sensitive paths, missing tests).
 """
@@ -23,7 +22,6 @@ def _risk_level(score: int) -> str:
     if score >= 25:
         return "medium"
     return "low"
-
 
 def calculate_risk(
     metadata: PRMetadata,
