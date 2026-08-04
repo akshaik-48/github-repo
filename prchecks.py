@@ -4,11 +4,6 @@ Validates PR/MR hygiene before merge:
 1. **Title check** -- the PR/MR title must match the configured rule.
 2. **Commit check** -- every commit message must match the configured rule.
 
-Both checks are fully **customizable per repository** via the rule set
-(``pr_title_check`` and ``commit_message_check`` in the repo rules / default
-rules file). Any failure records a finding, optionally posts a comment, and
-sets ``state.checks_passed = False`` -- which blocks whitespace-only
-auto-merge (see :class:`~app.pr_pipeline.nodes.auto_merge.AutoMergeNode`).
 """
 from __future__ import annotations
 
