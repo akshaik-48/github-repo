@@ -4,11 +4,8 @@ Computes a numeric risk score (0–100) and a severity level for a pull request
 based on configurable rules (file count, churn, sensitive paths, missing tests).
 """
 from __future__ import annotations
-
 from typing import Any
-
 from app.pr_pipeline.state import PRFileDiff, PRMetadata, RuleFinding
-
 
 def _risk_level(score: int) -> str:
     """Map a numeric score to a human-readable risk level.
