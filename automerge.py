@@ -24,8 +24,6 @@ _MERGED_NOTE = (
 
 
 class AutoMergeNode:
-    """Decides whether a PR/MR is whitespace-only and merges it when it is."""
-
     async def run(self, state: PRAgentState) -> PRAgentState:
         """Classify the change; auto-merge whitespace-only PRs when enabled,
         otherwise flag for human review."""
