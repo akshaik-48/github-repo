@@ -10,10 +10,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from typing import Any
-
 from app.config import settings
 from app.database import get_repo_rules
-
 
 DEFAULT_RULES: dict[str, Any] = {
     "weights": {
