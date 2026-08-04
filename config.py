@@ -6,7 +6,6 @@ configuration when running locally.
 """
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-
 class Settings(BaseSettings):
     """Central settings object populated from environment variables / .env file.
 
@@ -97,7 +96,7 @@ class Settings(BaseSettings):
 
     # LLM settings
     llm_provider: str = "openai"
-    llm_timeout_seconds: int = 60
+    llm_timeout_seconds: int = 30
     llm_max_tokens: int = 2000
     openai_api_key: str = ""
     openai_model: str = "gpt-4o"
