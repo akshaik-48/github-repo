@@ -5,8 +5,8 @@ computed analysis result (including findings) to SQLite.
 """
 from __future__ import annotations
 
-from app.database import insert_analysis, insert_event, insert_findings
-from app.pr_pipeline.state import PRAgentState
+from  import insert_analysis, insert_event, insert_findings
+from  import PRAgentState
 
 
 class PersistResultNode:
