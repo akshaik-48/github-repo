@@ -6,7 +6,7 @@ configuration when running locally.
 from  import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
-    """Central settings object populated from environment variables / .env file.
+    Central settings object populated from environment variables / .env file.
 
     Fields are grouped by concern:
     - Server: host/port for uvicorn.
