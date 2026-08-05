@@ -1,0 +1,14 @@
+fastapi
+uvicorn[standard]
+pydantic-settings
+httpx
+python-dotenv
+pydantic
+langgraph
+langchain
+litellm
+PyGithub
+sqlalchemy
+psycopg2-binary
+redis
+prometheus-client
