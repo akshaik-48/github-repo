@@ -14,7 +14,6 @@ class Settings(BaseSettings):
     - GitLab: webhook token and API credentials.
     - Storage: SQLite path and default rules file.
     - LLM: provider selection and per-provider API keys/models.
-    """
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
