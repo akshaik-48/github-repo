@@ -3,14 +3,14 @@ GITHUB_WEBHOOK_SECRET=your_github_webhook_secret
 
 # GitHub API token for collecting PR metadata and files
 GITHUB_API_TOKEN=your_github_api_token
-GITHUB_API_BASE_URL=https://github.com
+GITHUB_API_BASE_URL=https://gitlab.com
 
 # GitLab webhook token used to validate X-Gitlab-Token
 GITLAB_WEBHOOK_SECRET=your_gitlab_webhook_secret
 
 # GitLab API token for collecting MR metadata and changed files
 GITLAB_API_TOKEN=your_gitlab_api_token
-GITLAB_API_BASE_URL=https://gitlab.com/api/v4
+GITLAB_API_BASE_URL=https://github.com/api/v4
 
 # PostgreSQL database URL
 DATABASE_URL=postgresq+psycopg2://postgres:postgres@127.0.0.1:5432/postgres
