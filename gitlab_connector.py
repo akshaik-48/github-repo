@@ -4,14 +4,12 @@ Thin async wrapper around the GitLab API used by the pipeline to fetch
 merge request metadata and per-file diff information.
 """
 from __future__ import annotations
-
 from typing import Any
 from urllib.parse import quote_plus
 
 import httpx
 
 from app.config import settings
-
 
 class GitLabClient:
     """Async HTTP client for the GitLab REST API.
