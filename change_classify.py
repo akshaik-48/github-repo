@@ -89,25 +89,3 @@ def classify_change(files: list[PRFileDiff]) -> str:
             return CODE_CHANGE
 
     return WHITESPACE_ONLY if saw_change else EMPTY
-
-
-
-    if not files:
-        return EMPTY
-
-    saw_change = False
-    for file in files:
-        if file.status in {"added", "removed", "renamed"}:
-            return CODE_CHANGE
-        if not file.patch:
-            return CODE_CHANGE
-
-        removed, added = _split_patch(file.patch)
-        if not removed and not added:
-            continue
-
-        saw_change = True
-        if _normalized_nonblank(removed) != _normalized_nonblank(added):
-            return CODE_CHANGE
-
-    return WHITESPACE_ONLY if saw_change else EMPTY
