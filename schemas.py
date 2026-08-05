@@ -5,9 +5,7 @@ These schemas define the JSON shapes returned by the ``/webhooks`` and
 """
 from datetime import datetime
 from typing import Any
-
 from pydantic import BaseModel, Field
-
 
 class WebhookAck(BaseModel):
     """Acknowledgement returned immediately after a webhook is accepted.
@@ -31,7 +29,6 @@ class AnalysisFindingResponse(BaseModel):
     line_start: int = 0
     line_end: int = 0
     evidence: dict[str, Any] = Field(default_factory=dict)
-
 
 class MergeReadinessResponse(BaseModel):
     """Merge readiness assessment attached to an analysis result."""
