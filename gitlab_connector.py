@@ -18,7 +18,7 @@ class GitLabClient:
     requests are sent with a ``Bearer`` token header.
     """
 
-     def __init__(self) -> None:
+      __init__(self) -> None:
         """Initialise the client with the base URL and auth headers from settings."""
         self._base = settings.gitlab_api_base_url.rstrip("/")
         self._headers = {
@@ -27,7 +27,7 @@ class GitLabClient:
         if settings.gitlab_api_token:
             self._headers["Authorization"] = f"Bearer {settings.gitlab_api_token}"
 
-    async def get_merge_request(self, project_id: int | str, mr_iid: int) -> dict[str, Any]:
+    async  get_merge_request(self, project_id: int | str, mr_iid: int) -> dict[str, Any]:
         """Fetches a single MR from the GitLab API and returns the raw
         response dict."""
         project = quote_plus(str(project_id))
