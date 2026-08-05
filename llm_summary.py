@@ -18,10 +18,8 @@ Provider-specific behaviour
   smaller local models.
 """
 from __future__ import annotations
-
 from app.llm_agents import LLMAgent, build_llm_kwargs, select_llm_agent
 from app.pr_pipeline.state import PRAgentState
-
 
 _SEPARATOR = "---RECOMMENDATION---"
 
@@ -46,7 +44,6 @@ unvalidated audience claim, and a hardcoded fallback secret.
 
 🚫 Do not merge — critical security findings must be resolved first.
 """.strip()
-
 
 def _build_prompt_gemini(state: PRAgentState) -> str:
     """Full-context prompt for Gemini 1.5 Pro."""
