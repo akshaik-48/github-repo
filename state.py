@@ -15,7 +15,7 @@ from pydantic import BaseModel, Field
 logger = logging.getLogger("pr_agent.pipeline")
 
 
-class PRWebhookEnvelope(BaseModel):
+class (BaseModel):
     """Raw webhook delivery metadata, provider-agnostic.
 
     Wraps the incoming request headers and payload before any parsing.
