@@ -3,7 +3,7 @@ GITHUB_WEBHOOK_SECRET=your_github_webhook_secret
 
 # GitHub API token for collecting PR metadata and files
 GITHUB_API_TOKEN=your_github_api_token
-GITHUB_API_BASE_URL=https://api.github.com
+GITHUB_API_BASE_URL=https://github.com
 
 # GitLab webhook token used to validate X-Gitlab-Token
 GITLAB_WEBHOOK_SECRET=your_gitlab_webhook_secret
@@ -13,7 +13,7 @@ GITLAB_API_TOKEN=your_gitlab_api_token
 GITLAB_API_BASE_URL=https://gitlab.com/api/v4
 
 # PostgreSQL database URL
-DATABASE_URL=postgresql+psycopg2://postgres:postgres@127.0.0.1:5432/postgres
+DATABASE_URL=postgresq+psycopg2://postgres:postgres@127.0.0.1:5432/postgres
 
 # Legacy SQLite path (unused when DATABASE_URL is set)
 DATABASE_PATH=./data/pr_agent.db
