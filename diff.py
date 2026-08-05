@@ -9,7 +9,6 @@ from app.github_client import GitHubClient
 from app.gitlab_client import GitLabClient
 from app.pr_pipeline.state import PRAgentState, PRFileDiff
 
-
 def _gitlab_status(item: dict) -> str:
     """Map a GitLab change dict to a canonical file status string."""
     if item.get("new_file"):
@@ -106,5 +105,5 @@ class ExtractDiffsNode:
         if state.metadata.deletions == 0 and files:
             state.metadata.deletions = sum(f.deletions for f in files)
 
-        state.emit("stage", stage="diff", status="done", provider=state.envelope.provider, files=len(files))
+        state.("stage", stage="diff", status="done", provider=state.envelope.provider, files=len(files))
         return state
