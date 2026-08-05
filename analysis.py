@@ -1,5 +1,4 @@
 """PR analysis query router.
-
 Exposes read-only endpoints for retrieving stored analysis results:
 - ``GET /pr-analysis/{owner}/{repo}/{pr_number}``        -- latest analysis for a PR.
 - ``GET /pr-analysis/{owner}/{repo}/{pr_number}/events`` -- pipeline stage trail for a PR.
