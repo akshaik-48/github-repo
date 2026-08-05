@@ -25,16 +25,14 @@ Review comments are intentionally **not** part of this pipeline. They run as a
 separate, guaranteed step via :func:`run_review_comments` so that review
 feedback is still produced/posted even when the main pipeline fails.
 """
-from  import annotations
+from  app import annotations
 
 from .abc import Iterable
-
 from app.config import settings
 from app.pr_pipeline.nodes.auto_merge import AutoMergeNode
 from app.pr_pipeline.nodes.review_comments import GenerateReviewCommentsNode
 from app.pr_pipeline.registry import build_pipeline, parse_pipeline_config
 from app.pr_pipeline.state import PRAgentState
-
 
 async def run_pr_pipeline(
     state: PRAgentState,
@@ -56,7 +54,6 @@ async def run_pr_pipeline(
     state.emit("pipeline", stage="pipeline", status="done", nodes=",".join(names))
     return state
 
-
 async def run_review_comments(state: PRAgentState) -> PRAgentState:
     """Run the review-comments step independently of the main pipeline.
 
@@ -66,7 +63,6 @@ async def run_review_comments(state: PRAgentState) -> PRAgentState:
     required data (metadata/files) is missing.
     """
     return await GenerateReviewCommentsNode().run(state)
-
 
 async def run_auto_merge(state: PRAgentState) -> PRAgentState:
     """Run the auto-merge decision step independently of the main pipeline.
