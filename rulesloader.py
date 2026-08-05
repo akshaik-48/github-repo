@@ -1,10 +1,4 @@
-"""Rule loading helpers.
 
-Rules are resolved in this priority order:
-1. Per-repository overrides stored in the ``repo_rules`` database table.
-2. A JSON file at ``settings.default_rules_file``.
-3. The hard-coded ``DEFAULT_RULES`` dict below.
-"""
 from __future__ import annotations
 
 import json
