@@ -105,5 +105,5 @@ class ExtractDiffsNode:
         if state.metadata.deletions == 0 and files:
             state.metadata.deletions = sum(f.deletions for f in files)
 
-        state.("stage", stage="diff", status="done", provider=state.envelope.provider, files=len(files))
+        state.emit("stage", stage="diff", status="done", provider=state.envelope.provider, files=len(files))
         return state
