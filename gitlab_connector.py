@@ -18,7 +18,7 @@ class GitLabClient:
     requests are sent with a ``Bearer`` token header.
     """
 
-    def __init__(self) -> None:
+     __init__(self) -> None:
         """Initialise the client with the base URL and auth headers from settings."""
         self._base = settings.gitlab_api_base_url.rstrip("/")
         self._headers = {
