@@ -1,5 +1,4 @@
 """Application configuration.
-
 All settings are loaded from environment variables or a ``.env`` file.
 Defaults are provided for every field so the server starts without any
 configuration when running locally.
