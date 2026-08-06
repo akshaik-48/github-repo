@@ -1,0 +1,65 @@
+# GitHub App webhook secret used to validate X-Hub-Signature-256
+GITHUB_WEBHOOK_SECRET=ed15eef8-406c-4053-85fb-0a5e2d2a6f85
+
+# GitHub API token for collecting PR metadata and files
+GITHUB_API_TOKEN=
+GITHUB_API_BASE_URL=https://api.github.com
+
+# GitLab webhook token used to validate X-Gitlab-Token
+GITLAB_WEBHOOK_SECRET=
+
+# GitLab API token for collecting MR metadata and changed files
+GITLAB_API_TOKEN=
+GITLAB_API_BASE_URL=https://gitlab.mynisum.com/api/v4
+
+# PostgreSQL database URL
+DATABASE_URL=postgresql+psycopg2://postgres:Welcome%402027@127.0.0.1:5432/pr_agent
+
+# Legacy SQLite path (unused when DATABASE_URL is set)
+DATABASE_PATH=./data/pr_agent.db
+
+# Data retention settings
+WEBHOOK_PAYLOAD_RETENTION_DAYS=30
+ANALYSIS_LOG_RETENTION_DAYS=90
+AI_CACHE_RETENTION_DAYS=30
+
+# AI cache default TTL in seconds (7 days)
+AI_CACHE_TTL_SECONDS=604800
+
+# Fallback rules file when repo rules are not in DB 
+DEFAULT_RULES_FILE=./rules/default_rules.json
+
+# Config-driven pipeline: comma-separated, ordered node names to run.
+# Leave blank for the full default pipeline. Available nodes:
+# ingest, metadata, diff, rules, risk, llm_summary, persist
+# (review comments run as a separate guaranteed step, not a pipeline node)
+# Example (rules-only, no LLM): ingest,metadata,diff,rules,risk,persist
+REVIEW_GUIDELINES_FILE=./rules/review_guidelines.md
+
+POST_COMMENTS_ENABLED=true
+MAX_INLINE_COMMENTS=20
+AUTO_MERGE_ENABLED=true
+PIPELINE_NODES=ingest, metadata, diff, rules, risk, llm_summary, persist
+
+# LLM settings
+LLM_PROVIDER=OpenAI
+LLM_TIMEOUT_SECONDS=180
+
+# OpenAI
+OPENAI_API_KEY=
+OPENAI_MODEL=gpt-4o
+
+# Claude
+ANTHROPIC_API_KEY=
+CLAUDE_MODEL=claude-3-5-sonnet-20241022
+
+# Gemini
+GEMINI_API_KEY=
+GEMINI_MODEL=gemini/gemini-1.5-pro
+
+# Ollama
+#llama3.1
+#OLLAMA_ENABLED=true
+#OLLAMA_BASE_URL=http://localhost:11434
+#OLLAMA_MODEL=ollama/llama3.1:8b
+
