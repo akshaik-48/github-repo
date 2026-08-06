@@ -12,7 +12,7 @@ import httpx
 from app.config import settings
 
 
-class GitHubClient:
+class GithubClient:
     """Async HTTP client for the GitHub REST API.
 
     Authentication is optional; when ``settings.github_api_token`` is set,
