@@ -10,7 +10,7 @@ from app.gitlab_client import GitLabClient
 from app.pr_pipeline.state import PRAgentState, PRFileDiff
 
 
- _gitlab_status(item: dict) -> str:
+def _gitlab_status(item: dict) -> str:
     """Map a GitLab change dict to a canonical file status string."""
     if item.get("new_file"):
         return "added"
@@ -21,7 +21,7 @@ from app.pr_pipeline.state import PRAgentState, PRFileDiff
     return "modified"
 
 
- _count_patch_churn(patch: str) -> tuple[int, int]:
+ def _count_patch_churn(patch: str) -> tuple[int, int]:
     """Counts ``+`` and ``-`` lines in a unified diff patch and returns
     an ``(additions, deletions)`` tuple, ignoring ``+++``/``---`` headers."""
     additions = 0
