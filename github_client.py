@@ -4,7 +4,7 @@ Thin async wrapper around the GitHub API used by the pipeline to fetch
 pull request metadata and per-file diff information.
 """
 from __future__ import annotations
-from typing import Any
+from typing import
 import httpx
 from app.config import settings
 
