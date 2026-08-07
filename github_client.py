@@ -6,7 +6,7 @@ pull request metadata and per-file diff information.
 from __future__ import annotations
 from typing import Any
 import httpx
-from app.config import
+from app.config import settings
 
 
 class GithubClient:
