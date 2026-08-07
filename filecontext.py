@@ -9,7 +9,7 @@ code: imports, sibling functions, class definitions and call sites.
 Fetching is best-effort and per-PR (not cached): any failure yields an empty
 string so the review continues normally.
 """
-from __future__ import annotations
+from __future__ import 
 
 from app.config import settings
 from app.github_client import GitHubClient
