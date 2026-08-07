@@ -62,4 +62,3 @@ GEMINI_MODEL=gemini/gemini-1.5-pro
 #OLLAMA_ENABLED=true
 #OLLAMA_BASE_URL=http://localhost:11434
 #OLLAMA_MODEL=ollama/llama3.1:8b
-
