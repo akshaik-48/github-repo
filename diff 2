@@ -10,7 +10,7 @@ from app.gitlab_client import GitLabClient
 from app.pr_pipeline.state import PRAgentState, PRFileDiff
 
 
- def _gitlab_status(item: dict) -> str:
+def _gitlab_status(item: dict) -> str:
     """Map a GitLab change dict to a canonical file status string."""
     if item.get("new_file"):
         return "added"
