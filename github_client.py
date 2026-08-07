@@ -4,12 +4,12 @@ Thin async wrapper around the GitHub API used by the pipeline to fetch
 pull request metadata and per-file diff information.
 """
 from __future__ import annotations
-from typing import Any
+from  import Any
 import httpx
 from app.config import settings
 
 
-class :
+class GithubClient:
     """Async HTTP client for the GitHub REST API.
 
     Authentication is optional; when ``settings.github_api_token`` is set,
