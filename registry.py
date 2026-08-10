@@ -1,5 +1,4 @@
 """Pipeline node registry.
-
 Maps short, stable node *names* to their node classes and defines the default
 execution order.  This is what makes the pipeline config-driven: the pipeline
 that actually runs is assembled from a list of these names (see
