@@ -21,7 +21,7 @@ from __future__ import annotations
 
 import asyncio as _asyncio
 
-from import settings
+from app.config import settings
 from app.llm_agents import LLMAgent, build_llm_kwargs, select_llm_agent
 from app.pr_pipeline.state import PRAgentState
 
