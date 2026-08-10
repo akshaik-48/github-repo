@@ -5,7 +5,7 @@ pull request metadata and per-file diff information.
 """
 from __future__ import annotations
 from typing import Any
-import httpx
+import 
 from app.config import settings
 
 
