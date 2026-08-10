@@ -154,7 +154,7 @@ class GenerateLLMSummaryNode:
     pipeline can continue without interruption.
     """
 
-    asy def run(self, state: PRAgentState) -> PRAgentState:
+    async def run(self, state: PRAgentState) -> PRAgentState:
         state.emit("stage", stage="llm_summary", status="running")
         if state.status in {"ignored", "rejected"} or not state.metadata:
             state.emit("stage", stage="llm_summary", status="skipped")
