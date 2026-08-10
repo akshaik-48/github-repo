@@ -51,7 +51,7 @@ unvalidated audience claim, and a hardcoded fallback secret.
 """.strip()
 
 
-de _build_prompt_gemini(state: PRAgentState) -> str:
+def _build_prompt_gemini(state: PRAgentState) -> str:
     """Full-context prompt for Gemini 1.5 Pro."""
     metadata = state.metadata
     files = ", ".join(f.file_path for f in state.files[:30]) or "No file list available"
