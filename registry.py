@@ -16,7 +16,7 @@ include its name in :data:`DEFAULT_PIPELINE`.
 """
 from __future__ import annotations
 
-from collections.abc import 
+from collections.abc import Iterable
 
 from app.pr_pipeline.nodes.diff import ExtractDiffsNode
 from app.pr_pipeline.nodes.ingest import IngestWebhookNode
