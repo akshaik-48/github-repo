@@ -1,0 +1,209 @@
+"""Generate LLM summary and recommendation node.
+
+Uses the selected LLM provider (via :mod:`app.llm_agents`) to produce:
+- A concise executive summary of the PR risk analysis (2–3 sentences).
+- A structured recommendation section telling the developer what to do next,
+  grouped by severity (Critical/High/Medium/Low) and ending with a merge
+  readiness verdict.
+
+Both are stored in ``state.llm_summary`` and ``state.llm_recommendation``
+for later persistence and API exposure.
+
+Provider-specific behaviour
+---------------------------
+- **Gemini** (cloud): receives the full findings list and a rich context
+  block; prompt targets its strong instruction-following.
+- **Ollama** (local): receives a shorter, simpler prompt with a concrete
+  separator instruction to work around weaker instruction-following in
+  smaller local models.
+"""
+from __future__ import annotations
+
+import asyncio as _asyncio
+
+from app.config import settings
+from app.llm_agents import LLMAgent, build_llm_kwargs, select_llm_agent
+from app.pr_pipeline.state import PRAgentState
+
+
+_SEPARATOR = "---RECOMMENDATION---"
+
+_ONE_SHOT_EXAMPLE = """
+Example of the expected output format:
+
+This PR refactors the authentication middleware and adds JWT validation.
+Risk is HIGH due to three critical findings: missing token expiry check,
+unvalidated audience claim, and a hardcoded fallback secret.
+
+---RECOMMENDATION---
+### Critical
+- **AUTH-001**: `app/auth.py` line 42 — JWT secret read directly from
+  `os.environ` without a default. Will raise `KeyError` in production
+  if env var is absent. Fix: use `os.environ.get('JWT_SECRET')` and
+  raise a descriptive `ConfigError` at startup.
+
+### High
+- **SEC-003**: `app/middleware.py` line 88 — Token audience (`aud`) claim
+  is never validated. Any valid token issued for a different service will
+  be accepted. Fix: add `options={"verify_aud": True}` to `jwt.decode`.
+
+🚫 Do not merge — critical security findings must be resolved first.
+""".strip()
+
+
+de _build_prompt_gemini(state: PRAgentState) -> str:
+    """Full-context prompt for Gemini 1.5 Pro."""
+    metadata = state.metadata
+    files = ", ".join(f.file_path for f in state.files[:30]) or "No file list available"
+
+    sev_counts: dict[str, list[str]] = {"critical": [], "high": [], "medium": [], "low": []}
+    for item in state.findings:
+        sev = item.severity.lower()
+        if sev in sev_counts:
+            sev_counts[sev].append(f"{item.rule_id}: {item.message}")
+
+    findings_block = ""
+    for sev in ("critical", "high", "medium", "low"):
+        msgs = sev_counts[sev]
+        if msgs:
+            findings_block += f"\n{sev.upper()} ({len(msgs)}):\n" + "\n".join(f"  - {m}" for m in msgs)
+
+    if not findings_block:
+        findings_block = "  No rule findings."
+
+    return (
+        f"Study the pull request data below and respond with EXACTLY two sections "
+        f"separated by the marker '{_SEPARATOR}'.\n\n"
+        f"SECTION 1 — SUMMARY (2–3 sentences, plain text, no markdown):\n"
+        f"State what the PR does and its overall risk level. Be direct and specific.\n\n"
+        f"{_SEPARATOR}\n\n"
+        f"SECTION 2 — RECOMMENDATION (markdown, grouped by severity):\n"
+        f"List specific, actionable fixes for each finding. End with one of:\n"
+        f"'✅ Safe to merge', '⚠️ Merge with caution', or '🚫 Do not merge'.\n\n"
+        f"Here is an example of the expected output:\n{_ONE_SHOT_EXAMPLE}\n\n"
+        f"---\n"
+        f"Repository: {metadata.owner}/{metadata.repo}\n"
+        f"PR: #{metadata.pr_number} — {metadata.title}\n"
+        f"Author: {metadata.author}\n"
+        f"Branches: {metadata.head_branch} → {metadata.base_branch}\n"
+        f"Risk score: {state.risk.score}/100 ({state.risk.level})\n"
+        f"Changed files: {metadata.changed_files} | +{metadata.additions} / -{metadata.deletions} lines\n"
+        f"Files: {files}\n"
+        f"Findings:{findings_block}\n"
+    )
+
+
+def _build_prompt_ollama(state: PRAgentState) -> str:
+    """Shorter prompt tuned for local Ollama models (codellama, mistral, deepseek-coder).
+
+    Avoids complex formatting instructions that smaller models tend to ignore.
+    Keeps input compact to stay within context window even after system message
+    overhead.
+    """
+    metadata = state.metadata
+    top_findings = state.findings[:8]
+    findings_text = "\n".join(
+        f"- [{f.severity.upper()}] {f.rule_id}: {f.message}" for f in top_findings
+    ) or "- None"
+
+    return (
+        f"Review this pull request and write two sections.\n\n"
+        f"Write 2 sentences describing what the PR does and its risk level.\n"
+        f"Then write the exact line: {_SEPARATOR}\n"
+        f"Then list specific fixes for each finding below, grouped by severity "
+        f"(Critical, High, Medium, Low). End with '✅ Safe to merge', "
+        f"'⚠️ Merge with caution', or '🚫 Do not merge'.\n\n"
+        f"PR: {metadata.owner}/{metadata.repo} #{metadata.pr_number} — {metadata.title}\n"
+        f"Risk: {state.risk.score}/100 ({state.risk.level})\n"
+        f"Files changed: {metadata.changed_files}\n"
+        f"Findings:\n{findings_text}\n"
+    )
+
+
+def _build_prompt(state: PRAgentState, provider: str) -> str:
+    if provider == "ollama":
+        return _build_prompt_ollama(state)
+    return _build_prompt_gemini(state)
+
+
+def _parse_response(raw: str) -> tuple[str, str]:
+    """Split the LLM response into (summary, recommendation).
+
+    Falls back gracefully if the separator is missing.
+    """
+    if _SEPARATOR in raw:
+        parts = raw.split(_SEPARATOR, 1)
+        return parts[0].strip(), parts[1].strip()
+    return raw.strip(), ""
+
+
+async def _call_agent(agent: LLMAgent, prompt: str) -> str:
+    from litellm import acompletion
+
+    response = await acompletion(**build_llm_kwargs(agent, prompt))
+    content = response.choices[0].message.content
+    return str(content or "").strip()
+
+
+class GenerateLLMSummaryNode:
+    """Generates an AI executive summary and actionable recommendation for the PR.
+
+    Skips silently when the event is ignored/rejected, when no metadata
+    is available, or when no LLM provider is configured.  On LLM errors,
+    sets both fields to ``""`` and emits a ``fallback`` event so the
+    pipeline can continue without interruption.
+    """
+
+    async def run(self, state: PRAgentState) -> PRAgentState:
+        state.emit("stage", stage="llm_summary", status="running")
+        if state.status in {"ignored", "rejected"} or not state.metadata:
+            state.emit("stage", stage="llm_summary", status="skipped")
+            return state
+
+        agent = select_llm_agent(state)
+        if not agent:
+            state.emit("stage", stage="llm_summary", status="fallback", reason="no_agent_configured")
+            return state
+
+        state.llm_provider = agent.provider
+        state.llm_model = agent.model
+        try:
+            # asyncio.wait_for provides a Python-level deadline independent of
+            # litellm's own timeout — guards against silent HTTP stalls (e.g.
+            # Ollama under load) where the litellm timeout may not fire.
+            raw = await _asyncio.wait_for(
+                _call_agent(agent, _build_prompt(state, agent.provider)),
+                timeout=settings.llm_timeout_seconds * 1.5,
+            )
+            state.llm_summary, state.llm_recommendation = _parse_response(raw)
+            state.emit(
+                "stage",
+                stage="llm_summary",
+                status="done",
+                provider=agent.provider,
+                model=agent.model,
+                has_recommendation=bool(state.llm_recommendation),
+            )
+        except _asyncio.TimeoutError:
+            state.llm_summary = ""
+            state.llm_recommendation = ""
+            state.emit(
+                "stage",
+                stage="llm_summary",
+                status="timeout",
+                provider=agent.provider,
+                model=agent.model,
+                reason="llm_summary timed out at Python level",
+            )
+        except Exception as exc:
+            state.llm_summary = ""
+            state.llm_recommendation = ""
+            state.emit(
+                "stage",
+                stage="llm_summary",
+                status="fallback",
+                provider=agent.provider,
+                model=agent.model,
+                reason=str(exc),
+            )
+        return state
