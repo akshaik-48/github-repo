@@ -17,7 +17,7 @@ Provider-specific behaviour
   separator instruction to work around weaker instruction-following in
   smaller local models.
 """
-from __future__ import 
+from __future__ import annotations
 
 import asyncio as _asyncio
 
