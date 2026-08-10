@@ -19,7 +19,7 @@ Provider-specific behaviour
 """
 from __future__ import annotations
 
-import  as _asyncio
+import asyncio as _asyncio
 
 from app.config import settings
 from app.llm_agents import LLMAgent, build_llm_kwargs, select_llm_agent
