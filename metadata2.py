@@ -5,7 +5,7 @@ it with a live API call to the GitHub or GitLab REST API.
 """
 from __future__ import annotations
 
-from  import GitHubClient
+from app.github_client import GitHubClient
 from app.gitlab_client import GitLabClient
 from app.pr_pipeline.state import PRAgentState, PRMetadata
 
