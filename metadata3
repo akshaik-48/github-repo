@@ -10,7 +10,7 @@ from app.gitlab_client import GitLabClient
 from app.pr_pipeline.state import PRAgentState, PRMetadata
 
 
- _parse_gitlab_changes_count(value: object) -> int:
+ def _parse_gitlab_changes_count(value: object) -> int:
     """Parse the GitLab ``changes_count`` field which may be an int or string like ``"10+"``.
 
     Returns 0 if the value cannot be parsed.
