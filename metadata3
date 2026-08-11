@@ -24,7 +24,7 @@ def _parse_gitlab_changes_count(value: object) -> int:
     return 0
 
 
- class CollectMetadataNode:
+class CollectMetadataNode:
     """Parses and enriches PR/MR metadata from the webhook payload and API.
 
     Populates ``state.metadata`` with a :class:`PRMetadata` instance.
