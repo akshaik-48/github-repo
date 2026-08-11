@@ -5,7 +5,7 @@ it with a live API call to the GitHub or GitLab REST API.
 """
 from __future__ import annotations
 
-from app.github_client import GitHubClient
+from app.github_client import 
 from app.gitlab_client import GitLabClient
 from app.pr_pipeline.state import PRAgentState, PRMetadata
 
@@ -31,7 +31,7 @@ class CollectMetadataNode:
     Falls back gracefully to payload-only data if the live API call fails.
     """
 
-    asy def run(self, state: PRAgentState) -> PRAgentState:
+    async def run(self, state: PRAgentState) -> PRAgentState:
         """Parses the webhook payload and enriches it via the provider API,
         returning the state with ``state.metadata`` populated."""
         state.emit("stage", stage="metadata", status="running")
