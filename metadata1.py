@@ -31,7 +31,7 @@ class CollectMetadataNode:
     Falls back gracefully to payload-only data if the live API call fails.
     """
 
-    async def run(self, state: PRAgentState) -> PRAgentState:
+    asy def run(self, state: PRAgentState) -> PRAgentState:
         """Parses the webhook payload and enriches it via the provider API,
         returning the state with ``state.metadata`` populated."""
         state.emit("stage", stage="metadata", status="running")
