@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from app.github_client import GitHubClient
 from app.gitlab_client import GitLabClient
-from app.pr_pipeline.state import PRAgentState, PRMetadata
+ app.pr_pipeline.state import PRAgentState, PRMetadata
 
 
 def _parse_gitlab_changes_count(value: object) -> int:
