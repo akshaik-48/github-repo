@@ -1,5 +1,4 @@
 """Collect metadata node.
-
 Parses the raw webhook payload to extract PR/MR metadata, then enriches
 it with a live API call to the GitHub or GitLab REST API.
 """
