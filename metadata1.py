@@ -1,0 +1,152 @@
+"""Collect metadata node.
+
+Parses the raw webhook payload to extract PR/MR metadata, then enriches
+it with a live API call to the GitHub or GitLab REST API.
+"""
+from __future__ import annotations
+
+from app.github_client import 
+from app.gitlab_client import GitLabClient
+from app.pr_pipeline.state import PRAgentState, PRMetadata
+
+
+def _parse_gitlab_changes_count(value: object) -> int:
+    """Parse the GitLab ``changes_count`` field which may be an int or string like ``"10+"``.
+
+    Returns 0 if the value cannot be parsed.
+    """
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str):
+        digits = "".join(ch for ch in value if ch.isdigit())
+        if digits:
+            return int(digits)
+    return 0
+
+
+class CollectMetadataNode:
+    """Parses and enriches PR/MR metadata from the webhook payload and API.
+
+    Populates ``state.metadata`` with a :class:`PRMetadata` instance.
+    Falls back gracefully to payload-only data if the live API call fails.
+    """
+
+    async def run(self, state: PRAgentState) -> PRAgentState:
+        """Parses the webhook payload and enriches it via the provider API,
+        returning the state with ``state.metadata`` populated."""
+        state.emit("stage", stage="metadata", status="running")
+        if state.status in {"ignored", "rejected"}:
+            state.emit("stage", stage="metadata", status="skipped")
+            return state
+
+        payload = state.envelope.payload
+        if state.envelope.provider == "gitlab":
+            obj = payload.get("object_attributes", {})
+            project = payload.get("project", {})
+            repo_name = (project.get("path") or project.get("name") or "").strip()
+            owner = (project.get("namespace") or "").strip()
+            if not owner:
+                path_ns = str(project.get("path_with_namespace") or "")
+                owner = path_ns.rsplit("/", 1)[0] if "/" in path_ns else ""
+            pr_number = int(obj.get("iid") or 0)
+
+            metadata = PRMetadata(
+                owner=owner,
+                repo=repo_name,
+                pr_number=pr_number,
+                title=obj.get("title", ""),
+                body=obj.get("description") or "",
+                author=((payload.get("user") or {}).get("username") or ""),
+                base_branch=obj.get("target_branch") or "",
+                head_branch=obj.get("source_branch") or "",
+                base_sha=((obj.get("diff_refs") or {}).get("base_sha") or ""),
+                head_sha=((obj.get("last_commit") or {}).get("id") or ""),
+                commits=0,
+                changed_files=_parse_gitlab_changes_count(obj.get("changes_count")),
+                additions=0,
+                deletions=0,
+                labels=[label for label in obj.get("labels", []) if isinstance(label, str)],
+                is_draft=bool(obj.get("work_in_progress") or obj.get("draft") or False),
+                html_url=obj.get("url") or "",
+            )
+
+            project_id = project.get("id")
+            if project_id and pr_number > 0:
+                client = GitLabClient()
+                try:
+                    remote = await client.get_merge_request(project_id, pr_number)
+                    metadata.title = remote.get("title", metadata.title)
+                    metadata.body = remote.get("description") or metadata.body
+                    metadata.author = ((remote.get("author") or {}).get("username") or metadata.author)
+                    metadata.changed_files = _parse_gitlab_changes_count(
+                        remote.get("changes_count") or metadata.changed_files
+                    )
+                    diff_refs = remote.get("diff_refs") or {}
+                    metadata.base_sha = diff_refs.get("base_sha") or metadata.base_sha
+                    metadata.target_branch_sha = diff_refs.get("start_sha") or ""
+                    metadata.head_sha = diff_refs.get("head_sha") or remote.get("sha") or metadata.head_sha
+                    metadata.labels = [label for label in remote.get("labels", []) if isinstance(label, str)]
+                    metadata.html_url = remote.get("web_url") or metadata.html_url
+                except Exception as exc:
+                    state.emit("warning", stage="metadata", message=f"GitLab API metadata fallback: {exc}")
+        else:
+            pr = payload.get("pull_request", {})
+            repo = payload.get("repository", {})
+            owner = ((repo.get("owner") or {}).get("login") or "").strip()
+            repo_name = (repo.get("name") or "").strip()
+            pr_number = int(payload.get("number") or pr.get("number") or 0)
+
+            metadata = PRMetadata(
+                owner=owner,
+                repo=repo_name,
+                pr_number=pr_number,
+                title=pr.get("title", ""),
+                body=pr.get("body") or "",
+                author=((pr.get("user") or {}).get("login") or ""),
+                base_branch=((pr.get("base") or {}).get("ref") or ""),
+                head_branch=((pr.get("head") or {}).get("ref") or ""),
+                base_sha=((pr.get("base") or {}).get("sha") or ""),
+                head_sha=((pr.get("head") or {}).get("sha") or ""),
+                commits=int(pr.get("commits") or 0),
+                changed_files=int(pr.get("changed_files") or 0),
+                additions=int(pr.get("additions") or 0),
+                deletions=int(pr.get("deletions") or 0),
+                labels=[l.get("name", "") for l in pr.get("labels", []) if isinstance(l, dict)],
+                is_draft=bool(pr.get("draft") or False),
+                html_url=pr.get("html_url", ""),
+            )
+
+            if owner and repo_name and pr_number > 0:
+                client = GitHubClient()
+                try:
+                    remote = await client.get_pull_request(owner, repo_name, pr_number)
+                    metadata.title = remote.get("title", metadata.title)
+                    metadata.body = remote.get("body") or metadata.body
+                    metadata.author = ((remote.get("user") or {}).get("login") or metadata.author)
+                    metadata.commits = int(remote.get("commits") or metadata.commits)
+                    metadata.changed_files = int(remote.get("changed_files") or metadata.changed_files)
+                    metadata.additions = int(remote.get("additions") or metadata.additions)
+                    metadata.deletions = int(remote.get("deletions") or metadata.deletions)
+                    metadata.base_sha = ((remote.get("base") or {}).get("sha") or metadata.base_sha)
+                    metadata.head_sha = ((remote.get("head") or {}).get("sha") or metadata.head_sha)
+                    metadata.labels = [l.get("name", "") for l in remote.get("labels", []) if isinstance(l, dict)]
+                except Exception as exc:
+                    state.emit("warning", stage="metadata", message=f"GitHub API metadata fallback: {exc}")
+
+        state.metadata = metadata
+        state.emit(
+            "stage",
+            stage="metadata",
+            status="done",
+            provider=state.envelope.provider,
+            owner=metadata.owner,
+            repo=metadata.repo,
+            pr_number=metadata.pr_number,
+        )
+        return state
+    
+
+
+
+
+
