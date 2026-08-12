@@ -8,7 +8,6 @@ Provides schema initialisation and CRUD helpers for the core tables:
 - ``pr_pipeline_events`` -- per-stage pipeline execution trail (status/telemetry).
 """
 from __future__ import annotations
-
 import hashlib
 import json
 from datetime import datetime, timezone
