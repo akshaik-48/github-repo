@@ -5,7 +5,7 @@ whether to continue processing (``status = "accepted"``) or short-circuit
 (``status = "ignored"`` / ``"rejected"``).
 """
 from __future__ import annotations
-from app.pr_pipeline.state import 
+from app.pr_pipeline.state import settings
 
 class ingest:
     """Validates and filters the incoming webhook envelope.
