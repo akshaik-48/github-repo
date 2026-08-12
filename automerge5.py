@@ -101,7 +101,7 @@ class AutoMergeNode:
             merge_method=settings.auto_merge_method,
         )
 
-    as def _merge_gitlab(self, state: PRAgentState) -> None:
+    async def _merge_gitlab(self, state: PRAgentState) -> None:
         metadata = state.metadata
         assert metadata is not None
         project_id = (state.envelope.payload.get("project") or {}).get("id")
