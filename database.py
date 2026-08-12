@@ -1,5 +1,4 @@
 """PostgreSQL persistence layer.
-
 Provides schema initialisation and CRUD helpers for the core tables:
 - ``pr_events``          -- raw webhook delivery records.
 - ``pr_analyses``        -- computed risk analysis results.
@@ -8,7 +7,6 @@ Provides schema initialisation and CRUD helpers for the core tables:
 - ``pr_pipeline_events`` -- per-stage pipeline execution trail (status/telemetry).
 """
 from __future__ import annotations
-
 import hashlib
 import json
 from datetime import datetime, timezone
