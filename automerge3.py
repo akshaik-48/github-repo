@@ -126,4 +126,4 @@ class AutoMergeNode:
                         project_id, metadata.pr_number, body
                     )
         except Exception as exc:
-            state("warning", stage="auto_merge", message=f"note failed: {exc}")
+            state.emit("warning", stage="auto_merge", message=f"note failed: {exc}")
