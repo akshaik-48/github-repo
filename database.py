@@ -1460,7 +1460,7 @@ def get_pipeline_events_by_delivery(delivery_id: str) -> list[dict[str, Any]]:
             "created_at": str(row.get("created_at")),
             "final_status": str(row.get("final_status") or ""),
         }
-        for row in rows
+        for row  rows
     ]
 
 
