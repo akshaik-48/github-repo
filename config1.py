@@ -19,13 +19,9 @@ class Settings(BaseSettings):
 
     host: str = "127.0.0.1"
     port: int = 8010
-
-    github_webhook_secret: str = ""
-    github_api_token: str = ""
+   
     github_api_base_url: str = "https://api.github.com"
 
-    gitlab_webhook_secret: str = ""
-    gitlab_api_token: str = ""
     gitlab_api_base_url: str = "https://gitlab.com/api/v4"
 
     database_url: str = "postgresql+psycopg2://postgres:postgres@127.0.0.1:5432/pr_agent"
@@ -41,7 +37,6 @@ class Settings(BaseSettings):
     # Leave blank to run the default full pipeline. Valid names:
     # ingest, metadata, diff, rules, risk, pr_checks, llm_summary, persist.
     # (review_comments and auto_merge run as separate guaranteed steps, not pipeline nodes.)
-    pipeline_nodes: str = ""
 
     # Merge readiness: thresholds and blocking rules for the merge-readiness node.
     merge_ready_threshold: int = 80       # score >= this → MERGE_READY
@@ -52,7 +47,6 @@ class Settings(BaseSettings):
 
     # API authentication: set a non-empty value to require X-API-Key on all
     # knowledge write endpoints and analysis read endpoints. Empty = no auth.
-    api_key: str = ""
 
     # Review comments
     post_comments_enabled: bool = False
@@ -96,11 +90,8 @@ class Settings(BaseSettings):
     llm_provider: str = "openai"
     llm_timeout_seconds: int = 30
     llm_max_tokens: int = 2000
-    openai_api_key: str = ""
     openai_model: str = "gpt-4o"
-    anthropic_api_key: str = ""
     claude_model: str = "claude-3-5-sonnet-20241022"
-    gemini_api_key: str = ""
     gemini_model: str = "gemini/gemini-1.5-pro"
     ollama_base_url: str = "http://localhost:11434"
     ollama_model: str = "ollama/llama3"
