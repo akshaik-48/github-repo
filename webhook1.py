@@ -113,6 +113,8 @@ async def github_webhook(request: Request) -> WebhookAck:
     if not event_type:
         raise HTTPException(status_code=400, detail="Missing X-GitHub-Event header.")
 
+    signature_valid = _validate_signature(settings.github_webhook_secret, body, signature)
+
     envelope = PRWebhookEnvelope(
         provider="github",
         delivery_id=delivery_id,
