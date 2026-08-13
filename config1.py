@@ -3,7 +3,7 @@ All settings are loaded from environment variables or a ``.env`` file.
 Defaults are provided for every field so the server starts without any
 configuration when running locally.
 """
-from  import BaseSettings, SettingsConfigDict
+from pydantic import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     Central settings object populated from environment variables / .env file.
