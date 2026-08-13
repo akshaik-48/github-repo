@@ -10,7 +10,7 @@ background task, and immediately return a :class:`~app.schemas.WebhookAck`.
 """
 from __future__ import annotations
 
-import 
+import asyncio
 import hashlib
 import hmac
 from datetime import datetime, timezone
