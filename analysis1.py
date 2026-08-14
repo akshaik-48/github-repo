@@ -9,7 +9,7 @@ Exposes read-only endpoints for retrieving stored analysis results:
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from uuid import
+from uuid import uuid4
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
 
