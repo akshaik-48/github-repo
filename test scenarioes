@@ -1,0 +1,282 @@
+"""End-to-end validation of the two remaining tester scenarios.
+
+Scenario 2 — Risk score accuracy:
+  The PR summary note must be posted AFTER the score bump so the GitHub
+  comment reflects the final LLM-adjusted risk, not just the structural score.
+
+Scenario 3 — LLM stage stuck at "running":
+  The dashboard JavaScript trail-refresh logic must re-fetch events for
+  expanded rows on each 10-second auto-refresh.
+
+These tests use only mocks and the actual pipeline code — no live GitHub,
+no live LLM, no database required.
+"""
+from __future__ import annotations
+
+import asyncio
+from datetime import datetime, timezone
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+
+from app.pr_pipeline.nodes.review_comments import (
+    GenerateReviewCommentsNode,
+    _format_summary_note,
+    _is_postable_inline,
+)
+from app.pr_pipeline.state import (
+    PRAgentState,
+    PRFileDiff,
+    PRMetadata,
+    PRWebhookEnvelope,
+    ReviewComment,
+    RiskScore,
+)
+from app.scoring import adjust_score_from_review_comments
+
+
+# ── helpers ──────────────────────────────────────────────────────────────────
+
+def _make_state(provider: str = "github", score: int = 15) -> PRAgentState:
+    env = PRWebhookEnvelope(
+        provider=provider,
+        delivery_id="test-delivery-001",
+        event="pull_request",
+        action="opened",
+        signature_valid=True,
+        received_at=datetime.now(timezone.utc),
+        payload={"pull_request": {"number": 42, "head": {"sha": "abc123"}}},
+    )
+    state = PRAgentState(envelope=env)
+    state.metadata = PRMetadata(
+        owner="testorg", repo="testrepo", pr_number=42,
+        title="feat: add authentication flow",
+        author="dev", head_sha="abc123", base_sha="def456",
+        changed_files=5, additions=120, deletions=30,
+    )
+    state.files = [
+        PRFileDiff(
+            file_path="app/auth.py",
+            status="modified",
+            additions=80,
+            deletions=20,
+            patch="@@ -1,5 +1,5 @@\n+def authenticate(token):\n+    pass\n",
+        )
+    ]
+    state.risk = RiskScore(score=score, level="low")
+    state.analysis_id = 99
+    return state
+
+
+# ── Scenario 2: score bump happens BEFORE posting ───────────────────────────
+
+class TestScenario2RiskScoreAccuracy:
+    """The posted GitHub note must show the bumped risk score, not the pre-review score."""
+
+    @pytest.mark.asyncio
+    async def test_score_bumped_before_post_to_github(self):
+        """simulate run() with a critical LLM finding and verify that when
+        _post_to_github is called, state.risk.score already reflects the bump."""
+        state = _make_state(score=15)
+        posted_score_seen: list[int] = []
+
+        async def _fake_post_github(self_inner, s: PRAgentState) -> None:
+            # Capture whatever score the node wrote to state before calling us.
+            posted_score_seen.append(s.risk.score)
+            s.emit("stage", stage="review_comments", status="done", posted=True, posted_count=1)
+
+        # Fake LLM returns a critical finding on an added line.
+        fake_llm_comment = ReviewComment(
+            source="llm", severity="critical",
+            message="SQL injection via unsanitised input",
+            file_path="app/auth.py", line=2,
+        )
+        fake_summary = "Authentication PR with a critical SQL injection risk."
+
+        with (
+            patch("app.pr_pipeline.nodes.review_comments.select_llm_agents", return_value=[MagicMock(provider="gemini")]),
+            patch("app.pr_pipeline.nodes.review_comments.load_repo_knowledge", new_callable=AsyncMock, return_value=""),
+            patch("app.pr_pipeline.nodes.review_comments.load_review_guidelines", return_value=""),
+            patch("app.pr_pipeline.nodes.review_comments._generate_batched_llm_line_comments",
+                  new_callable=AsyncMock,
+                  return_value=(fake_summary, [fake_llm_comment], ["gemini"])),
+            patch("app.pr_pipeline.nodes.review_comments.settings") as mock_settings,
+            patch.object(GenerateReviewCommentsNode, "_post_to_github", new=_fake_post_github),
+        ):
+            mock_settings.post_comments_enabled = True
+            mock_settings.review_multi_llm_enabled = True
+            mock_settings.review_llm_max_comments = 0
+            mock_settings.max_inline_comments = 0
+            mock_settings.review_min_inline_severity = "medium"
+
+            await GenerateReviewCommentsNode().run(state)
+
+        assert posted_score_seen, "post_to_github was never called"
+        # critical = +40 → 15 + 40 = 55
+        assert posted_score_seen[0] == 55, (
+            f"Expected score 55 (bumped) when posting, got {posted_score_seen[0]}. "
+            "The note was posted before the score bump ran."
+        )
+        assert state.risk.score == 55
+        assert state.risk.level == "high"
+
+    @pytest.mark.asyncio
+    async def test_score_bump_uses_all_comments_including_file_level(self):
+        """File-level (line=0) LLM findings must contribute to the score bump
+        even though they cannot be posted as GitHub inline comments."""
+        state = _make_state(score=0)
+
+        # Simulate a deletion-only file (line=0 finding from LLM)
+        file_level_comment = ReviewComment(
+            source="llm", severity="critical",
+            message="Removed __init__ method breaks all callers",
+            file_path="app/auth.py", line=0,
+        )
+
+        with (
+            patch("app.pr_pipeline.nodes.review_comments.select_llm_agents", return_value=[MagicMock(provider="gemini")]),
+            patch("app.pr_pipeline.nodes.review_comments.load_repo_knowledge", new_callable=AsyncMock, return_value=""),
+            patch("app.pr_pipeline.nodes.review_comments.load_review_guidelines", return_value=""),
+            patch("app.pr_pipeline.nodes.review_comments._generate_batched_llm_line_comments",
+                  new_callable=AsyncMock,
+                  return_value=("Deletion issue", [file_level_comment], ["gemini"])),
+            patch("app.pr_pipeline.nodes.review_comments.settings") as mock_settings,
+            patch.object(GenerateReviewCommentsNode, "_post_to_github", new=AsyncMock()),
+        ):
+            mock_settings.post_comments_enabled = False  # don't post, just generate
+            mock_settings.review_multi_llm_enabled = True
+            mock_settings.review_llm_max_comments = 0
+            mock_settings.max_inline_comments = 0
+            mock_settings.review_min_inline_severity = "medium"
+
+            await GenerateReviewCommentsNode().run(state)
+
+        # File-level critical comment: +40
+        assert state.risk.score == 40, (
+            f"Expected score 40 from file-level critical finding, got {state.risk.score}. "
+            "File-level (line=0) comments are being pruned from state.review_comments."
+        )
+
+    @pytest.mark.asyncio
+    async def test_file_level_findings_appear_in_summary_body(self):
+        """File-level deletion findings (line=0) must appear in the summary note body."""
+        state = _make_state(score=10)
+        state.review_comments = [
+            ReviewComment(
+                source="llm", severity="major",
+                message="Removed validation allows null tokens",
+                file_path="app/auth.py", line=0,
+            ),
+        ]
+        body = _format_summary_note(state)
+        assert "Removed validation allows null tokens" in body, (
+            "File-level finding not in summary body. "
+            "Line=0 comments are being filtered from state.review_comments."
+        )
+        assert "app/auth.py" in body
+
+    def test_score_bump_does_not_double_count_duplicates(self):
+        """Two identical comments should only bump the score once."""
+        c = ReviewComment(source="llm", severity="critical",
+                          message="SQL injection", file_path="app/auth.py", line=5)
+        score, level = adjust_score_from_review_comments(0, [c, c])
+        assert score == 40  # one critical = 40, not 80
+
+    def test_no_bump_when_no_comments(self):
+        score, level = adjust_score_from_review_comments(25, [])
+        assert score == 25
+        assert level == "medium"
+
+
+# ── Scenario 3: dashboard trail refresh ──────────────────────────────────────
+
+class TestScenario3DashboardTrailRefresh:
+    """The dashboard must refresh trail events for expanded rows on each
+    10-second auto-refresh, not cache them indefinitely."""
+
+    def test_fetch_trail_fn_exists_in_dashboard_js(self):
+        """Verify dashboard.html defines fetchTrail (the always-fetches helper)."""
+        from pathlib import Path
+        html = Path("app/static/dashboard.html").read_text(encoding="utf-8")
+        assert "fetchTrail" in html, (
+            "dashboard.html is missing fetchTrail(). "
+            "The trail is still being cached and never refreshed."
+        )
+
+    def test_load_dashboard_calls_fetch_trail_for_expanded(self):
+        """loadDashboard must call fetchTrail for expanded rows."""
+        from pathlib import Path
+        html = Path("app/static/dashboard.html").read_text(encoding="utf-8")
+        # Find the loadDashboard function body and check it references fetchTrail
+        load_fn_start = html.find("const loadDashboard")
+        load_fn_end = html.find("}, [fetchTrail]);", load_fn_start)
+        assert load_fn_start != -1, "loadDashboard not found"
+        assert load_fn_end != -1, "loadDashboard does not depend on fetchTrail (stale cache not cleared)"
+        load_fn_body = html[load_fn_start:load_fn_end]
+        assert "fetchTrail" in load_fn_body, (
+            "loadDashboard does not call fetchTrail for expanded rows. "
+            "Stage pills will remain stale after pipeline completes."
+        )
+
+    def test_ensure_trail_loaded_does_not_block_refresh(self):
+        """ensureTrailLoaded should only guard the on-open fetch, not the
+        auto-refresh, so that stale 'running' statuses can clear."""
+        from pathlib import Path
+        html = Path("app/static/dashboard.html").read_text(encoding="utf-8")
+        # The old pattern cached unconditionally: if (!loading) return early
+        # The new pattern only guards on-open: if data exists, skip
+        # We verify fetchTrail is NOT the same as ensureTrailLoaded
+        assert html.count("const fetchTrail") == 1
+        assert html.count("const ensureTrailLoaded") == 1
+        # ensureTrailLoaded must delegate to fetchTrail
+        ensure_start = html.find("const ensureTrailLoaded")
+        ensure_end = html.find("}, [trailData, fetchTrail]);", ensure_start)
+        assert ensure_end != -1, "ensureTrailLoaded doesn't depend on fetchTrail"
+
+
+# ── Scenario integration: full node run, no posting ──────────────────────────
+
+class TestFullNodeRunNoPosts:
+    """End-to-end flow through GenerateReviewCommentsNode with posting disabled."""
+
+    @pytest.mark.asyncio
+    async def test_comments_and_score_populated_when_post_disabled(self):
+        state = _make_state(score=10)
+        llm_comments = [
+            ReviewComment(source="llm", severity="major",
+                          message="Missing error handling on token decode",
+                          file_path="app/auth.py", line=2),
+            ReviewComment(source="llm", severity="minor",
+                          message="Unused import",
+                          file_path="app/auth.py", line=1),
+        ]
+
+        with (
+            patch("app.pr_pipeline.nodes.review_comments.select_llm_agents",
+                  return_value=[MagicMock(provider="gemini")]),
+            patch("app.pr_pipeline.nodes.review_comments.load_repo_knowledge",
+                  new_callable=AsyncMock, return_value=""),
+            patch("app.pr_pipeline.nodes.review_comments.load_review_guidelines", return_value=""),
+            patch("app.pr_pipeline.nodes.review_comments._generate_batched_llm_line_comments",
+                  new_callable=AsyncMock,
+                  return_value=("Overall looks risky", llm_comments, ["gemini"])),
+            patch("app.pr_pipeline.nodes.review_comments.settings") as mock_settings,
+        ):
+            mock_settings.post_comments_enabled = False
+            mock_settings.review_multi_llm_enabled = True
+            mock_settings.review_llm_max_comments = 0
+            mock_settings.max_inline_comments = 0
+            mock_settings.review_min_inline_severity = "medium"
+
+            await GenerateReviewCommentsNode().run(state)
+
+        # Both major (25) and minor (8) comments should be in state
+        assert len(state.review_comments) >= 2, "Not all LLM comments retained"
+        assert any(c.severity == "minor" for c in state.review_comments), (
+            "Minor comments pruned from state.review_comments. "
+            "Score bump won't include below-threshold severities."
+        )
+        # Score: 10 + 25 (major) + 8 (minor) = 43
+        assert state.risk.score == 43, f"Expected 43, got {state.risk.score}"
+        assert state.risk.level == "medium"
