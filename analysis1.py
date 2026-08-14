@@ -36,17 +36,6 @@ from app.schemas import (
 
 router = APIRouter(prefix="/pr-analysis", tags=["analysis"])
 
-
-def _require_api_key(x_api_key: str = Header(default="")) -> None:
-    """Reject requests that don't carry the configured API key.
-
-    When ``settings.api_key`` is empty the check is skipped so the service
-    works out-of-the-box in local/dev mode without any config.
-    """
-    if settings.api_key and x_api_key != settings.api_key:
-        raise HTTPException(status_code=401, detail="Invalid or missing API key.")
-
-
 def _to_events_response(rows: list[dict]) -> PipelineEventsResponse:
     """Build a :class:`PipelineEventsResponse` from raw pipeline-event rows."""
     first = rows[0]
