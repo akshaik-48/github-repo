@@ -1,5 +1,7 @@
-FROM python:
+FROM python:3.11-slim
+
 WORKDIR /home/app/web
+
 # Install system deps needed by psycopg2 and other packages
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq-dev \
@@ -18,3 +20,7 @@ COPY rules/ rules/
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     POST_COMMENTS_ENABLED=false \
+    OLLAMA_ENABLED=false
+
+# MCP stdio server entry point
+ENTRYPOINT ["python", "-m", "app.mcp_server"]
