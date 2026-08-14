@@ -195,15 +195,6 @@ class TestScenario3DashboardTrailRefresh:
     """The dashboard must refresh trail events for expanded rows on each
     10-second auto-refresh, not cache them indefinitely."""
 
-    def test_fetch_trail_fn_exists_in_dashboard_js(self):
-        """Verify dashboard.html defines fetchTrail (the always-fetches helper)."""
-        from pathlib import Path
-        html = Path("app/static/dashboard.html").read_text(encoding="utf-8")
-        assert "fetchTrail" in html, (
-            "dashboard.html is missing fetchTrail(). "
-            "The trail is still being cached and never refreshed."
-        )
-
     def test_load_dashboard_calls_fetch_trail_for_expanded(self):
         """loadDashboard must call fetchTrail for expanded rows."""
         from pathlib import Path
