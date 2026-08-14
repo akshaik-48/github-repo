@@ -20,7 +20,7 @@ COPY rules/ rules/
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     POST_COMMENTS_ENABLED=false \
-    OLLAMA_ENABLED=false
+    OLLAMA_ENABLED=
 
 # MCP stdio server entry point
 ENTRYPOINT ["python", "-m", "app.mcp_server"]
