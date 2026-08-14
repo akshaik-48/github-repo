@@ -3,7 +3,7 @@ FROM python:3.11-slim
 WORKDIR /home/app/web
 
 # Install system deps needed by psycopg2 and other packages
-RUN apt-get clean  && apt-transport-https && apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get clean  && apt-get install apt-transport-https && apt-get update && apt-get install -y --no-install-recommends \
     libpq-dev \
     gcc \
     && rm -rf /var/lib/apt/lists/*
