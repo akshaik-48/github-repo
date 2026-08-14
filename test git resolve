@@ -1,0 +1,145 @@
+"""Tests for GitLab inline-comment dedup and resolve-on-fix behaviour."""
+from __future__ import annotations
+
+from datetime import datetime, timezone
+
+import pytest
+
+from app.pr_pipeline.nodes import review_comments as rc
+from app.pr_pipeline.nodes.review_comments import (
+    _ALL_ADDRESSED_NOTE,
+    GenerateReviewCommentsNode,
+    _RESOLVED_REPLY,
+    _agent_inline_discussions,
+    _format_file_comment,
+    _format_summary_note,
+)
+from app.pr_pipeline.state import PRAgentState, PRMetadata, PRWebhookEnvelope, ReviewComment
+
+
+def _state(comments: list[ReviewComment]) -> PRAgentState:
+    env = PRWebhookEnvelope(
+        provider="gitlab", delivery_id="d1", event="merge_request", action="update",
+        signature_valid=True, received_at=datetime.now(timezone.utc),
+        payload={"project": {"id": 42}},
+    )
+    state = PRAgentState(envelope=env)
+    state.metadata = PRMetadata(
+        owner="o", repo="r", pr_number=7, base_sha="b", head_sha="h",
+        target_branch_sha="t", changed_files=1, additions=1, deletions=0,
+    )
+    state.review_comments = comments
+    return state
+
+
+def _cmt(path: str, line: int = 5, severity: str = "critical", message: str = "bug") -> ReviewComment:
+    return ReviewComment(source="llm", severity=severity, message=message, file_path=path, line=line)
+
+
+def _mine(disc_id: str, path: str, body: str, resolved: bool = False) -> dict:
+    return {
+        "id": disc_id,
+        "notes": [{"body": body, "resolvable": True, "resolved": resolved,
+                   "position": {"new_path": path}}],
+    }
+
+
+class _FakeGitLab:
+    def __init__(self, discussions):
+        self._discussions = discussions
+        self.created: list[str] = []
+        self.notes_added: list[tuple[str, str]] = []
+        self.resolved: list[str] = []
+
+    async def list_merge_request_discussions(self, project_id, mr_iid):
+        return self._discussions
+
+    async def create_merge_request_discussion(self, project_id, mr_iid, body, **kw):
+        self.created.append(kw.get("new_path", ""))
+        return {"id": "new"}
+
+    async def create_merge_request_discussion_note(self, project_id, mr_iid, discussion_id, body):
+        self.notes_added.append((discussion_id, body))
+        return {"id": "n"}
+
+    async def resolve_merge_request_discussion(self, project_id, mr_iid, discussion_id, resolved=True):
+        self.resolved.append(discussion_id)
+        return {"id": discussion_id}
+
+    async def list_merge_request_notes(self, project_id, mr_iid):
+        return []
+
+    async def create_merge_request_note(self, project_id, mr_iid, body):
+        return {"id": 1}
+
+    async def update_merge_request_note(self, project_id, mr_iid, note_id, body):
+        return {"id": note_id}
+
+
+def test_agent_inline_discussions_parses_only_agent_threads():
+    mine_body = _format_file_comment("app/a.py", [_cmt("app/a.py")])
+    discs = [
+        _mine("d1", "app/a.py", mine_body),
+        {"id": "d2", "notes": [{"body": "a human comment", "resolvable": True,
+                                 "resolved": False, "position": {"new_path": "app/x.py"}}]},
+    ]
+    result = _agent_inline_discussions(discs)
+    assert "app/a.py" in result
+    assert "app/x.py" not in result  # non-agent thread ignored
+
+
+@pytest.mark.asyncio
+async def test_fixed_file_thread_is_resolved_with_reply(monkeypatch):
+    # Current run flags app/b.py; app/a.py was flagged before but is now fixed.
+    state = _state([_cmt("app/b.py")])
+    old_a_body = _format_file_comment("app/a.py", [_cmt("app/a.py")])
+    fake = _FakeGitLab([_mine("disc_a", "app/a.py", old_a_body)])
+    monkeypatch.setattr(rc, "GitLabClient", lambda: fake)
+
+    await GenerateReviewCommentsNode()._post_to_gitlab(state)
+
+    assert "app/b.py" in fake.created           # new finding posted
+    assert (("disc_a", _RESOLVED_REPLY)) in fake.notes_added  # ack reply
+    assert "disc_a" in fake.resolved            # thread resolved
+
+
+@pytest.mark.asyncio
+async def test_identical_open_thread_is_not_reposted(monkeypatch):
+    comment = _cmt("app/b.py")
+    state = _state([comment])
+    identical = _format_file_comment("app/b.py", [comment])
+    fake = _FakeGitLab([_mine("disc_b", "app/b.py", identical)])
+    monkeypatch.setattr(rc, "GitLabClient", lambda: fake)
+
+    await GenerateReviewCommentsNode()._post_to_gitlab(state)
+
+    assert "app/b.py" not in fake.created       # dedup: not reposted
+    assert "disc_b" not in fake.resolved        # still open (issue remains)
+
+
+@pytest.mark.asyncio
+async def test_changed_thread_reposts_and_supersedes(monkeypatch):
+    state = _state([_cmt("app/b.py", message="new different bug")])
+    stale = _format_file_comment("app/b.py", [_cmt("app/b.py", message="old bug")])
+    fake = _FakeGitLab([_mine("disc_b", "app/b.py", stale)])
+    monkeypatch.setattr(rc, "GitLabClient", lambda: fake)
+
+    await GenerateReviewCommentsNode()._post_to_gitlab(state)
+
+    assert "app/b.py" in fake.created           # new content posted
+    assert "disc_b" in fake.resolved            # stale thread superseded
+    assert fake.notes_added == []               # no "resolved" reply (still an issue)
+
+
+def test_all_addressed_note_when_fixed_and_no_new_issues():
+    # No current review comments, but a previous thread was resolved this run.
+    state = _state([])
+    note = _format_summary_note(state, resolved_count=1)
+    assert _ALL_ADDRESSED_NOTE in note
+
+
+def test_no_issues_note_when_nothing_resolved():
+    state = _state([])
+    note = _format_summary_note(state, resolved_count=0)
+    assert _ALL_ADDRESSED_NOTE not in note
+    assert "No specific issues detected" in note
