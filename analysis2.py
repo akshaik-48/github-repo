@@ -46,65 +46,6 @@ def _require_api_key(x_api_key: str = Header(default="")) -> None:
     if settings.api_key and x_api_key != settings.api_key:
         raise HTTPException(status_code=401, detail="Invalid or missing API key.")
 
-
-def _to_events_response(rows: list[dict]) -> PipelineEventsResponse:
-    """Build a :class:`PipelineEventsResponse` from raw pipeline-event rows."""
-    first = rows[0]
-    return PipelineEventsResponse(
-        provider=first.get("provider") or "github",
-        delivery_id=first["delivery_id"],
-        owner=first.get("owner") or "",
-        repo=first.get("repo") or "",
-        pr_number=int(first.get("pr_number") or 0),
-        final_status=first.get("final_status") or "",
-        events=[
-            PipelineEventResponse(
-                seq=int(r["seq"]),
-                event_type=r.get("event_type") or "",
-                stage=r.get("stage"),
-                status=r.get("status"),
-                detail=r.get("detail") or {},
-                created_at=datetime.fromisoformat(r["created_at"]),
-            )
-            for r in rows
-        ],
-    )
-
-
-def _to_response(row: dict) -> AnalysisResponse:
-    """Convert a raw database row dict into an :class:`AnalysisResponse`.
-
-    Also fetches and attaches the associated findings rows.
-    """
-    analysis_id = int(row["id"])
-    findings = [AnalysisFindingResponse(**f) for f in get_findings(analysis_id)]
-    mr = get_merge_readiness(analysis_id)
-    merge_readiness = MergeReadinessResponse(**mr) if mr else None
-    created_at_value = row.get("created_at")
-    if isinstance(created_at_value, datetime):
-        created_at = created_at_value
-    else:
-        created_at = datetime.fromisoformat(str(created_at_value))
-    return AnalysisResponse(
-        id=analysis_id,
-        provider=row.get("provider") or "github",
-        owner=row["owner"],
-        repo=row["repo"],
-        pr_number=int(row["pr_number"]),
-        head_sha=row.get("head_sha") or "",
-        base_sha=row.get("base_sha") or "",
-        files_changed=int(row.get("files_changed") or 0),
-        additions=int(row.get("additions") or 0),
-        deletions=int(row.get("deletions") or 0),
-        risk_score=int(row.get("risk_score") or 0),
-        risk_level=row.get("risk_level") or "low",
-        summary=row.get("summary") or "",
-        created_at=created_at,
-        findings=findings,
-        merge_readiness=merge_readiness,
-    )
-
-
 @router.get("/recent", response_model=list[RunSummaryResponse], dependencies=[Depends(_require_api_key)])
 async def get_recent(
     limit: int = Query(default=50, ge=1, le=200),
