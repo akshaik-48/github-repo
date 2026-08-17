@@ -54,16 +54,6 @@ async def get_recent(
     """Return a summary of the most recent pipeline runs for the dashboard."""
     return [RunSummaryResponse(**run) for run in get_recent_runs(limit, offset)]
 
-
-@router.get("/events/{delivery_id}", response_model=PipelineEventsResponse, dependencies=[Depends(_require_api_key)])
-async def get_events_by_delivery(delivery_id: str) -> PipelineEventsResponse:
-    """Return the pipeline stage trail for a specific webhook delivery id."""
-    rows = get_pipeline_events_by_delivery(delivery_id)
-    if not rows:
-        raise HTTPException(status_code=404, detail="No pipeline events found for this delivery.")
-    return _to_events_response(rows)
-
-
 @router.get("/{owner}/{repo}/{pr_number}/events", response_model=PipelineEventsResponse, dependencies=[Depends(_require_api_key)])
 async def get_events_for_pr(
     owner: str,
