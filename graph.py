@@ -25,8 +25,8 @@ Review comments are intentionally **not** part of this pipeline. They run as a
 separate, guaranteed step via :func:`run_review_comments` so that review
 feedback is still produced/posted even when the main pipeline fails.
 """
-from  app import annotations
-from .abc import Iterable
+from app import annotations
+from app.abc import Iterable
 from app.config import settings
 from app.pr_pipeline.nodes.auto_merge import AutoMergeNode
 from app.pr_pipeline.nodes.review_comments import GenerateReviewCommentsNode
