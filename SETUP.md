@@ -151,4 +151,3 @@ MAX_INLINE_COMMENTS=20
 AUTO_MERGE_ENABLED=true
 
 Add these commands in the .env file.
-
