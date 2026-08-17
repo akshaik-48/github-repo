@@ -1,5 +1,4 @@
 """Ingest webhook node.
-
 First node in the pipeline.  Validates the incoming event and decides
 whether to continue processing (``status = "accepted"``) or short-circuit
 (``status = "ignored"`` / ``"rejected"``).
