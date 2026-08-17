@@ -13,7 +13,7 @@ class ingest:
     and ignores PR actions that do not require analysis (e.g. ``closed``).
     """
 
-    asy def run(self, state: PRAgentState) -> PRAgentState:
+    async def run(self, state: PRAgentState) -> PRAgentState:
         """Validates the envelope and returns the state with ``status`` set to
         ``"rejected"``, ``"ignored"``, or ``"accepted"``."""
         state.emit("stage", stage="ingest", status="running")
