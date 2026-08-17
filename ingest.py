@@ -3,7 +3,7 @@ First node in the pipeline.  Validates the incoming event and decides
 whether to continue processing (``status = "accepted"``) or short-circuit
 (``status = "ignored"`` / ``"rejected"``).
 """
-from __future__ import 
+from __future__ import annotations
 from app.pr_pipeline.state import settings
 
 class ingest:
