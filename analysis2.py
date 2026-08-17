@@ -194,11 +194,6 @@ async def post_comments(analysis_id: int) -> PostCommentsResponse:
         status="completed",
     )
 
-    try:
-        state = await run_review_comments(state)
-    except Exception as exc:
-        raise HTTPException(status_code=503, detail=f"Comment posting failed: {exc}")
-
     rule_count = sum(1 for c in state.review_comments if c.source == "rule")
     llm_count = sum(1 for c in state.review_comments if c.source == "llm")
     posted_any = any(c.posted for c in state.review_comments)
