@@ -1,0 +1,221 @@
+# PR Agent Testing Skill
+
+Testers invoke this skill by typing `/pr-agent-test` in Claude Code.
+
+You are a QA assistant for the PR Agent system. When this skill is invoked, guide the tester through a structured testing session interactively.
+
+---
+
+## What you do when invoked
+
+### Step 1 — Check environment is ready
+
+Run these checks and report pass/fail for each:
+
+1. Check `.env` file exists at `pr-agent/.env`
+2. Confirm `POST_COMMENTS_ENABLED=true` is set
+3. Confirm `LLM_PROVIDER=gemini` is set  
+4. Confirm `GEMINI_API_KEY` is not empty
+5. Confirm `GITHUB_API_TOKEN` or `GITLAB_API_TOKEN` is set
+
+If any check fails, tell the tester exactly what to fix before continuing. Do NOT proceed with testing until the environment is correct.
+
+---
+
+### Step 2 — Ask the tester what they want to test
+
+Present this menu and ask the tester to pick a number:
+
+```
+What do you want to test today?
+
+1. SQL Injection Detection
+2. Hardcoded Secret / API Key Detection
+3. Blank or Numeric PR Title
+4. Blank Commit Message
+5. Duplicate Code Detection
+6. Deleted Method Signature
+7. Large PR (High Risk)
+8. Whitespace-Only PR (should NOT flag issues)
+9. Migration File (Sensitive Path)
+10. Run ALL scenarios end-to-end
+```
+
+---
+
+### Step 3 — For each selected scenario, do the following:
+
+#### Tell the tester exactly what to do on GitHub/GitLab
+
+Give step-by-step instructions:
+- What file to create or modify
+- What code to write inside it
+- What PR title to use
+- What PR description to write
+- Where to raise the PR (which repo/branch)
+
+#### Then wait for the tester to confirm they raised the PR
+
+After they confirm, tell them:
+- How long to wait (usually 30–60 seconds)
+- What to look for in the dashboard at `http://localhost:8010/dashboard`
+- What to look for in GitHub/GitLab PR comments
+- What the expected result is (what the agent SHOULD catch)
+
+#### Then verify the result together
+
+Ask the tester:
+- "What score did the dashboard show?"
+- "Did you see a merge readiness comment on the PR?"
+- "Did you see any inline comments on the code?"
+
+Compare their answer to the expected result below and tell them whether the test **PASSED** or **FAILED**.
+
+---
+
+## Expected Results Per Scenario
+
+### 1. SQL Injection Detection
+**Code to add in any `.py` file:**
+```python
+def get_user(user_id):
+    query = f"SELECT * FROM users WHERE id={user_id}"
+    cursor.execute(query)
+```
+**PR title:** `Add user lookup`  
+**Expected:** Risk score > 50. Critical finding flagged. Inline comment on the f-string line saying SQL injection risk.  
+**PASS if:** Dashboard shows critical/high finding AND inline comment posted on the PR.
+
+---
+
+### 2. Hardcoded Secret Detection
+**Code to add in any `.py` file:**
+```python
+API_KEY =
+DATABASE_PASSWORD =
+```
+**PR title:** `Add API integration`  
+**Expected:** Critical finding for hardcoded credentials. Merge readiness = MERGE_BLOCKED or REVIEW_REQUIRED.  
+**PASS if:** Finding with severity=critical appears and comment warns about hardcoded secret.
+
+---
+
+### 3. Blank or Numeric PR Title
+**PR title:** `1234567` or leave blank  
+**PR description:** anything  
+**Expected:** Rule finding: "PR title does not describe the change."  
+**PASS if:** Comment or finding mentions bad/invalid title.
+
+---
+
+### 4. Blank Commit Message
+**Commit message:** leave blank or write `"test"` or `"changes"`  
+**Expected:** Finding: commit message too short / not descriptive.  
+**PASS if:** Finding or comment mentions commit message quality.
+
+---
+
+### 5. Duplicate Code Detection
+**Code to add:** Copy an entire class or function and paste it again at the bottom of the same file. Example — duplicate a 20-line class.  
+**PR title:** `Refactor models`  
+**Expected:** LLM comment flagging duplicate/redundant code.  
+**Note:** Gemini will catch this. Ollama may miss it. Test with `LLM_PROVIDER=gemini`.  
+**PASS if:** Review comment mentions duplication.
+
+---
+
+### 6. Deleted Method Signature
+**Code change:** Remove the `def` keyword from a method so it becomes invalid syntax:
+```python
+# Before
+def process_payment(amount):
+    pass
+
+# After (broken — remove 'def')
+process_payment(amount):
+    pass
+```
+**PR title:** `Update payment handler`  
+**Expected:** LLM inline comment flagging missing `def` / syntax error.  
+**PASS if:** Inline comment on that line.
+
+---
+
+### 7. Large PR (High Risk)
+**Action:** Modify 25+ files in one PR (even small changes to each).  
+**Expected:** Risk score >= 50. Risk level = high or critical. Score breakdown mentions "high file count."  
+**PASS if:** Dashboard shows risk level = high or critical.
+
+---
+
+### 8. Whitespace-Only PR (Clean — Should NOT Flag)
+**Code change:** Remove trailing spaces or fix indentation only, no logic changes.  
+**PR title:** `Fix indentation`  
+**Expected:** Risk score low (< 25). No critical/high findings. Merge readiness = MERGE_READY.  
+**PASS if:** No issues flagged, merge verdict is MERGE_READY.
+
+---
+
+### 9. Migration File (Sensitive Path)
+**Action:** Add or modify a file in `migrations/` folder.  
+**PR title:** `Add user table migration`  
+**Expected:** Score increases due to sensitive path. Finding mentions migration risk.  
+**PASS if:** Sensitive path factor appears in score breakdown.
+
+---
+
+### 10. Run ALL Scenarios
+Run scenarios 1–9 in order. Track pass/fail for each. At the end print a summary table:
+
+```
+Scenario                    | Result
+----------------------------|--------
+SQL Injection Detection     | PASS
+Hardcoded Secret Detection  | PASS
+Blank PR Title              | FAIL
+...
+```
+
+---
+
+## Dashboard & Comment Checklist (remind tester for every test)
+
+After each PR is raised:
+
+```
+[ ] Wait 30-60 seconds
+[ ] Open http://localhost:8010/dashboard — refresh it
+[ ] Confirm PR shows status = "completed" (not "ignored")
+[ ] Check risk score and level shown
+[ ] Open the PR on GitHub/GitLab
+[ ] Check PR comments tab for merge readiness comment
+[ ] Check Files Changed tab for inline review comments
+[ ] Compare to expected result
+[ ] Mark PASS or FAIL
+```
+
+---
+
+## Common Problems and Fixes
+
+| Symptom | Fix |
+|---|---|
+| Status stays "ignored" | Wrong webhook event type — re-open or push a new commit to the PR |
+| No inline comments appear | Check `POST_COMMENTS_ENABLED=true` in `.env` and restart the server |
+| Risk score always 15 | That is correct for a small clean PR — not a bug |
+| Dashboard shows 3 rows for 1 PR | Pull latest code — this was fixed in the dashboard dedup patch |
+| Ollama misses duplicate code | Switch to `LLM_PROVIDER=gemini` in `.env` |
+| Comments appear but no inline code comments | GitHub token needs `pull_requests:write` scope |
+| Server not responding | Run `uvicorn app.main:app --reload --port 8010` from the `pr-agent/` directory |
+
+---
+
+## After testing is complete
+
+Ask the tester: "Would you like me to log your test results?"
+
+If yes, write a test report to `test-results/YYYY-MM-DD-results.md` with:
+- Date and tester name
+- Each scenario: PASS / FAIL / SKIPPED
+- Any unexpected behaviour observed
+- Environment used (Gemini / Ollama / both)
