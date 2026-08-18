@@ -4,7 +4,6 @@ Invokes the scoring engine to produce a numeric risk score, level, and
 list of rule findings for the pull/merge request.
 """
 from __future__ import annotations
-
 from app.pr_pipeline.state import PRAgentState, RiskScore
 from app.scoring import calculate_risk
 
