@@ -14,7 +14,7 @@ auto-merge (see :class:`~app.pr_pipeline.nodes.auto_merge.AutoMergeNode`).
 from __future__ import annotations
 
 import asyncio as _asyncio
-import 
+import json
 import re
 
 from app.config import settings
