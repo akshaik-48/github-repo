@@ -11,7 +11,7 @@ rules file). Any failure records a finding, optionally posts a comment, and
 sets ``state.checks_passed = False`` -- which blocks whitespace-only
 auto-merge (see :class:`~app.pr_pipeline.nodes.auto_merge.AutoMergeNode`).
 """
-from __future__ import 
+from __future__ import annotations
 
 import asyncio as _asyncio
 import json
