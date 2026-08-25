@@ -5,24 +5,19 @@ as an auto-mergeable whitespace-only change; the same re-indentation in a
 brace-delimited language (JS/Go/Java) remains whitespace-only.
 """
 from __future__ import annotations
-
 from app.change_classify import CODE_CHANGE, EMPTY, WHITESPACE_ONLY, classify_change
 from app.pr_pipeline.state import PRFileDiff
 
-
 def _file(path: str, patch: str, status: str = "modified") -> PRFileDiff:
     return PRFileDiff(file_path=path, status=status, additions=1, deletions=1, patch=patch)
-
 
 def test_python_reindentation_is_code_change():
     patch = "@@ -1,1 +1,1 @@\n-    return x\n+        return x\n"
     assert classify_change([_file("app/service.py", patch)]) == CODE_CHANGE
 
-
 def test_python_blank_line_only_is_whitespace_only():
     patch = "@@ -1,1 +1,2 @@\n+\n"
     assert classify_change([_file("app/service.py", patch)]) == WHITESPACE_ONLY
-
 
 def test_python_trailing_whitespace_cleanup_is_whitespace_only():
     patch = "@@ -1,1 +1,1 @@\n-def foo():   \n+def foo():\n"
