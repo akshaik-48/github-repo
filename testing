@@ -1,0 +1,205 @@
+# PR Agent – Testing Scenarios and Findings
+
+## 1. Fully Functioning / Working Scenarios
+
+### 1.1 Multiple PR Scenario
+
+* Raising two PRs works correctly.
+* Review comments are generated successfully for both PRs.
+
+### 1.2 Multiple Changes to the Same PR
+
+* When a PR is raised, review comments are generated.
+* When additional changes are made to the same PR, review comments are generated again.
+* When the PR is closed and a new PR is raised, review comments are generated successfully.
+
+### 1.3 Multiple PRs Raised at the Same Time
+
+* Multiple PRs can be raised simultaneously.
+* The PR Agent processes them correctly.
+* Review comments are generated for the respective PRs.
+
+### 1.4 Risk Score After Fixing Agent-Identified Issues
+
+* When the agent identifies an issue in a PR and the issue is fixed according to the agent's recommendation, the subsequent risk score is accurate.
+
+### 1.5 White Space Changes
+
+* Changes involving white spaces are working correctly.
+* No issues were observed when white spaces are moved or modified.
+
+### 1.6 Ollama
+
+* The Ollama-related issue has been resolved.
+* Ollama is functioning correctly with the PR Agent.
+
+### 1.7 Dashboard
+
+* The dashboard is working correctly.
+* No issues were observed during testing.
+
+### 1.8 Ignored Status
+
+When the PR/event status is **Ignored**, the pipeline behaves as follows:
+
+| Node        | Status  |
+| ----------- | ------- |
+| Ingest      | Ignored |
+| Metadata    | Skipped |
+| Diff        | Skipped |
+| Rules       | Skipped |
+| Risk        | Skipped |
+| LLM Summary | Skipped |
+| Persist     | Done    |
+
+### 1.9 Completed Status
+
+* When the status is **Completed**, most of the pipeline nodes are executed successfully.
+
+---
+
+# 2. Partially Working
+
+## 2.1 Title and Commit Message Checks
+
+Title and commit message checks are working in some scenarios, but the behavior is inconsistent.
+
+* The checks do not always execute correctly when the PR is initially created.
+* When the title or commit message is subsequently changed, the checks start working.
+* Therefore, this functionality requires further investigation and fixing.
+
+---
+
+# 3. Not Working / Issues Found
+
+## 3.1 Risk Score for Newly Generated PRs Is Not Accurate
+
+### Observed Behavior
+
+* When a new PR is raised, the PR Agent generates a risk score.
+* The generated risk score is not accurate.
+* Even when the PR contains only a minor error, the system can assign a risk score such as **40/100**.
+
+### Expected Behavior
+
+* The risk score should accurately reflect the actual severity and impact of the issues identified in the PR.
+* Minor issues should not automatically result in a disproportionately high risk score.
+* The score should follow the defined risk-scoring logic consistently.
+
+### Impact
+
+The inaccurate initial risk score can give developers an incorrect understanding of the actual risk associated with the PR.
+
+---
+
+## 3.2 `llm_summary` Node Remains in Running State
+
+### Observed Behavior
+
+* The `llm_summary` node remains in the **Running** state even after the PR processing is completed.
+* Even when the PR is cleared/completed, `llm_summary` continues to show as running.
+
+### Expected Behavior
+
+* Once the LLM summary processing is completed, the node should transition to **Done/Completed**.
+* The `llm_summary` node should behave consistently with the other completed pipeline nodes.
+* When the PR is fully processed, no pipeline node that has completed its work should remain in a Running state.
+
+### Impact
+
+This creates an incorrect representation of the pipeline status on the dashboard and makes it difficult to determine whether the PR processing has actually completed.
+
+---
+
+## 3.3 Title and Commit Message Checks Are Not Triggered Correctly
+
+### Observed Behavior
+
+* Title and commit message checks are not performed properly when the Pull Request is initially created.
+* After changing the PR title or commit message, the checks start working.
+* This indicates that the checks may be triggered only after an update/change event rather than during the initial PR processing.
+
+### Expected Behavior
+
+The checks should be performed immediately when the Pull Request is created:
+
+**PR Created → Title Check + Commit Message Check → Result**
+
+The checks should not require the developer to modify the PR title or commit message before they are executed.
+
+### Impact
+
+Invalid or non-compliant PR titles and commit messages can initially pass without being detected.
+
+---
+
+# 4. What To Do / Fix Required
+
+## 4.1 Fix Initial Risk Score Calculation
+
+* Investigate the risk-score calculation for newly created PRs.
+* Verify that the initial risk score is being calculated from the correct PR metadata, changed files, risk factors, and detected issues.
+* Ensure minor errors do not result in an unnecessarily high risk score.
+* Validate the scoring formula and thresholds against expected test cases.
+* Add test scenarios covering:
+
+  * No issues
+  * Minor issues
+  * High-severity issues
+  * Critical issues
+  * Multiple issues
+  * PRs with different levels of code churn
+* Ensure the calculated score is consistent between the initial PR analysis and subsequent PR updates.
+
+## 4.2 Fix `llm_summary` Node Status
+
+* Investigate why the `llm_summary` node remains in the **Running** state after processing is complete.
+* Ensure the node explicitly transitions to **Done/Completed** after successful LLM processing.
+* Handle successful completion, timeout, and failure states appropriately.
+* Verify that the dashboard reflects the actual final state of the node.
+* Test the complete pipeline to ensure no completed node remains stuck in the Running state.
+
+## 4.3 Fix Initial Title and Commit Message Checks
+
+* Ensure title validation runs during the **initial Pull Request event**.
+* Ensure commit message validation runs during the **initial Pull Request event**.
+* Do not depend on a subsequent PR update/change to trigger these checks.
+* Verify that the webhook/event payload contains the required title and commit information at PR creation time.
+* Ensure the validation logic receives the initial PR data correctly.
+* Add test cases for:
+
+  * Valid PR title at creation
+  * Invalid PR title at creation
+  * Valid commit message at creation
+  * Invalid commit message at creation
+  * Multiple commits
+  * PR updated after creation
+* Confirm that changing the title or commit message is not required to initiate the first validation.
+
+---
+
+# 5. Overall Testing Summary
+
+| Area                           | Status          | Finding                                          |
+| ------------------------------ | --------------- | ------------------------------------------------ |
+| Multiple PRs                   | Working         | Review comments generated correctly              |
+| Multiple changes to same PR    | Working         | Re-analysis works correctly                      |
+| Multiple simultaneous PRs      | Working         | PRs processed correctly                          |
+| Risk score after fixing issues | Working         | Score is accurate after fixes                    |
+| White space changes            | Working         | No issues observed                               |
+| Ollama                         | Working         | Issue resolved                                   |
+| Dashboard                      | Working         | Functioning correctly                            |
+| Ignored status                 | Working         | Expected nodes are skipped/ignored               |
+| Completed status               | Working         | Most nodes complete successfully                 |
+| Initial risk score             | **Not Working** | Score can be inaccurate/high for minor issues    |
+| `llm_summary` status           | **Not Working** | Remains Running after PR processing completes    |
+| Title checks                   | **Not Working** | Initial PR validation does not work consistently |
+| Commit message checks          | **Not Working** | Checks start working only after changes          |
+
+## Priority Fixes
+
+1. **Fix initial risk-score accuracy**
+2. **Fix `llm_summary` node stuck in Running state**
+3. **Fix title validation during initial PR creation**
+4. **Fix commit-message validation during initial PR creation**
+5. **Add regression tests for all fixed scenarios**
