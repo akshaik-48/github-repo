@@ -56,7 +56,6 @@ async def run_pr_pipeline(
     state.emit("pipeline", stage="pipeline", status="done", nodes=",".join(names))
     return state
 
-
 async def run_review_comments(state: PRAgentState) -> PRAgentState:
     """Run the review-comments step independently of the main pipeline.
 
@@ -66,7 +65,6 @@ async def run_review_comments(state: PRAgentState) -> PRAgentState:
     required data (metadata/files) is missing.
     """
     return await GenerateReviewCommentsNode().run(state)
-
 
 async def run_auto_merge(state: PRAgentState) -> PRAgentState:
     """Run the auto-merge decision step independently of the main pipeline.
