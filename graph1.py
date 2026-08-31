@@ -17,7 +17,6 @@ Node names are resolved to classes via
 - ``risk``            -- compute risk score.
 - ``llm_summary``     -- generate AI summary.
 - ``persist``         -- write results to SQLite.
-
 Review comments are intentionally **not** part of this pipeline. They run as a
 separate, guaranteed step via :func:`run_review_comments` so that review
 feedback is still produced/posted even when the main pipeline fails.
