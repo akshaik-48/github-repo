@@ -11,7 +11,6 @@ _MERGED_NOTE = (
     "code change), so it was merged automatically."
 )
 
-
 class AutoMergeNode:
     async def run(self, state: PRAgentState) -> PRAgentState:
         """Classify the change; auto-merge whitespace-only PRs when enabled,
