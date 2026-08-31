@@ -1,7 +1,6 @@
 """PR analysis pipeline graph.
 Defines :func:`run_pr_pipeline`, which executes a **config-driven** sequence of
 pipeline nodes on a shared :class:`~app.pr_pipeline.state.PRAgentState`.
-
 Which nodes run, and in what order, is determined by (in priority order):
 
 1. The ``node_names`` argument passed to :func:`run_pr_pipeline` (per-request
