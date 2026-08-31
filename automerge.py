@@ -1,6 +1,4 @@
-
 from __future__ import annotations
-
 from app.change_classify import WHITESPACE_ONLY, classify_change
 from app.config import settings
 from app.github_client import GitHubClient
