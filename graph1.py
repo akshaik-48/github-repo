@@ -30,7 +30,6 @@ from app.pr_pipeline.nodes.review_comments import GenerateReviewCommentsNode
 from app.pr_pipeline.registry import build_pipeline, parse_pipeline_config
 from app.pr_pipeline.state import PRAgentState
 
-
 async def run_pr_pipeline(
     state: PRAgentState,
     node_names: Iterable[str] | None = None,
