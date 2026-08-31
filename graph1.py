@@ -10,7 +10,6 @@ Which nodes run, and in what order, is determined by (in priority order):
 
 Node names are resolved to classes via
 :data:`~app.pr_pipeline.registry.NODE_REGISTRY`.  Available nodes:
-
 - ``ingest``          -- validate & filter the event.
 - ``metadata``        -- fetch PR metadata from the API.
 - ``diff``            -- fetch per-file diffs.
