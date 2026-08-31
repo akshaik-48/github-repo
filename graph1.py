@@ -36,7 +36,6 @@ async def run_pr_pipeline(
 ) -> PRAgentState:
     """Run the configured pipeline nodes sequentially and return the enriched
     state.
-
     ``node_names`` overrides ``settings.pipeline_nodes`` for this call, enabling
     per-request pipeline customization.  When both are omitted, the default full
     pipeline runs.  Nodes skip gracefully when status is ignored/rejected.
