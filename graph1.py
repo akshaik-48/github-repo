@@ -25,9 +25,7 @@ separate, guaranteed step via :func:`run_review_comments` so that review
 feedback is still produced/posted even when the main pipeline fails.
 """
 from __future__ import annotations
-
 from collections.abc import Iterable
-
 from app.config import settings
 from app.pr_pipeline.nodes.auto_merge import AutoMergeNode
 from app.pr_pipeline.nodes.review_comments import GenerateReviewCommentsNode
