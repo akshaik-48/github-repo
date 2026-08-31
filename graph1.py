@@ -2,7 +2,6 @@
 Defines :func:`run_pr_pipeline`, which executes a **config-driven** sequence of
 pipeline nodes on a shared :class:`~app.pr_pipeline.state.PRAgentState`.
 Which nodes run, and in what order, is determined by (in priority order):
-
 1. The ``node_names`` argument passed to :func:`run_pr_pipeline` (per-request
    customization).
 2. ``settings.pipeline_nodes`` -- a comma-separated list of node names.
@@ -17,7 +16,6 @@ Node names are resolved to classes via
 - ``risk``            -- compute risk score.
 - ``llm_summary``     -- generate AI summary.
 - ``persist``         -- write results to SQLite.
-
 Review comments are intentionally **not** part of this pipeline. They run as a
 separate, guaranteed step via :func:`run_review_comments` so that review
 feedback is still produced/posted even when the main pipeline fails.
@@ -36,7 +34,6 @@ async def run_pr_pipeline(
 ) -> PRAgentState:
     """Run the configured pipeline nodes sequentially and return the enriched
     state.
-
     ``node_names`` overrides ``settings.pipeline_nodes`` for this call, enabling
     per-request pipeline customization.  When both are omitted, the default full
     pipeline runs.  Nodes skip gracefully when status is ignored/rejected.
