@@ -14,9 +14,7 @@ To register a new node, add an entry to :data:`NODE_REGISTRY` and (optionally)
 include its name in :data:`DEFAULT_PIPELINE`.
 """
 from __future__ import annotations
-
 from collections.abc import 
-
 from app.pr_pipeline.nodes.diff import ExtractDiffsNode
 from app.pr_pipeline.nodes.ingest import IngestWebhookNode
 from app.pr_pipeline.nodes.llm_summary import GenerateLLMSummaryNode
